@@ -1,0 +1,257 @@
+{
+  "entities": {
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted administrator directory record managed out-of-band.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "Profile": {
+      "title": "Profile",
+      "description": "Customer or admin user profile linked to Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "role": { "type": "string", "enum": ["customer", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "fullName", "email", "role", "createdAt", "updatedAt"]
+    },
+    "HostingPlan": {
+      "title": "HostingPlan",
+      "description": "Configurable web hosting plan catalog entry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "tagline": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "monthlyPrice": { "type": "number" },
+        "storageGb": { "type": "number" },
+        "websiteLimit": { "type": "number" },
+        "features": { "type": "array" },
+        "isPopular": { "type": "boolean" },
+        "isActive": { "type": "boolean" },
+        "sortOrder": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "tagline", "monthlyPrice", "storageGb", "websiteLimit", "features", "isPopular", "isActive", "sortOrder", "createdAt", "updatedAt"]
+    },
+    "SubscriptionDiscount": {
+      "title": "SubscriptionDiscount",
+      "description": "Billing cycle duration and discount percentage configuration.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "durationMonths": { "type": "number" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "discountPercentage": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "durationMonths", "label", "discountPercentage", "isActive", "updatedAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Immutable customer hosting order snapshot with pricing and optional domain/GitHub metadata.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderNumber": { "type": "string", "minLength": 4, "maxLength": 40, "pattern": "^[A-Z0-9\\-]+$" },
+        "customerId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "customerName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "customerEmail": { "type": "string", "format": "email", "maxLength": 200 },
+        "planId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "planNameSnapshot": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "baseMonthlyPriceSnapshot": { "type": "number" },
+        "storageSnapshot": { "type": "number" },
+        "websiteLimitSnapshot": { "type": "number" },
+        "durationMonths": { "type": "number" },
+        "discountPercentage": { "type": "number" },
+        "discountedMonthlyPrice": { "type": "number" },
+        "originalTotal": { "type": "number" },
+        "discountAmount": { "type": "number" },
+        "finalTotal": { "type": "number" },
+        "domain": { "type": "string", "maxLength": 253 },
+        "githubRepository": { "type": "string", "maxLength": 300 },
+        "paymentMethod": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "paymentId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "transactionId": { "type": "string", "minLength": 4, "maxLength": 60 },
+        "invoiceId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "invoiceNumber": { "type": "string", "minLength": 4, "maxLength": 40 },
+        "hostingDocId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "hostingId": { "type": "string", "minLength": 4, "maxLength": 40 },
+        "orderStatus": { "type": "string", "enum": ["PENDING", "CONFIRMED", "CANCELLED"] },
+        "paymentStatus": { "type": "string", "enum": ["SUCCESS", "PENDING", "FAILED"] },
+        "hostingStatus": { "type": "string", "enum": ["ACTIVE", "SUSPENDED", "CANCELLED", "EXPIRED"] },
+        "isSimulated": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id", "orderNumber", "customerId", "customerName", "customerEmail",
+        "planId", "planNameSnapshot", "baseMonthlyPriceSnapshot", "storageSnapshot",
+        "websiteLimitSnapshot", "durationMonths", "discountPercentage",
+        "discountedMonthlyPrice", "originalTotal", "discountAmount", "finalTotal",
+        "domain", "githubRepository", "paymentMethod", "paymentId", "transactionId",
+        "invoiceId", "invoiceNumber", "hostingDocId", "hostingId",
+        "orderStatus", "paymentStatus", "hostingStatus", "isSimulated", "createdAt", "updatedAt"
+      ]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Simulated payment transaction record (never stores card numbers, CVV, or expiry).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "transactionId": { "type": "string", "minLength": 4, "maxLength": 60 },
+        "orderId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderNumber": { "type": "string", "minLength": 4, "maxLength": 40 },
+        "customerId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "customerName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "customerEmail": { "type": "string", "format": "email", "maxLength": 200 },
+        "paymentMethod": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "enum": ["USD"] },
+        "paymentStatus": { "type": "string", "enum": ["SUCCESS", "PENDING", "FAILED"] },
+        "isSimulated": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "transactionId", "orderId", "orderNumber", "customerId", "customerName", "customerEmail", "paymentMethod", "amount", "currency", "paymentStatus", "isSimulated", "createdAt"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Immutable invoice record linked 1:1 with a confirmed order.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "invoiceNumber": { "type": "string", "minLength": 4, "maxLength": 40 },
+        "orderId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderNumber": { "type": "string", "minLength": 4, "maxLength": 40 },
+        "customerId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "customerName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "customerEmail": { "type": "string", "format": "email", "maxLength": 200 },
+        "domain": { "type": "string", "maxLength": 253 },
+        "planNameSnapshot": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "storageSnapshot": { "type": "number" },
+        "websiteLimitSnapshot": { "type": "number" },
+        "durationMonths": { "type": "number" },
+        "baseMonthlyPriceSnapshot": { "type": "number" },
+        "discountedMonthlyPrice": { "type": "number" },
+        "originalTotal": { "type": "number" },
+        "discountPercentage": { "type": "number" },
+        "discountAmount": { "type": "number" },
+        "finalTotal": { "type": "number" },
+        "paymentMethod": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "transactionId": { "type": "string", "minLength": 4, "maxLength": 60 },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "enum": ["USD"] },
+        "paymentStatus": { "type": "string", "enum": ["PAID", "DEMO PAID", "PENDING", "FAILED"] },
+        "invoiceDate": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id", "invoiceNumber", "orderId", "orderNumber", "customerId",
+        "customerName", "customerEmail", "domain", "planNameSnapshot",
+        "storageSnapshot", "websiteLimitSnapshot", "durationMonths",
+        "baseMonthlyPriceSnapshot", "discountedMonthlyPrice", "originalTotal",
+        "discountPercentage", "discountAmount", "finalTotal", "paymentMethod",
+        "transactionId", "amount", "currency", "paymentStatus", "invoiceDate"
+      ]
+    },
+    "HostingService": {
+      "title": "HostingService",
+      "description": "Simulated hosting service record automatically activated on order confirmation.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "hostingId": { "type": "string", "minLength": 4, "maxLength": 40 },
+        "orderId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderNumber": { "type": "string", "minLength": 4, "maxLength": 40 },
+        "customerId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "customerName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "customerEmail": { "type": "string", "format": "email", "maxLength": 200 },
+        "planId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "planName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "domain": { "type": "string", "maxLength": 253 },
+        "githubRepository": { "type": "string", "maxLength": 300 },
+        "storageGb": { "type": "number" },
+        "websiteLimit": { "type": "number" },
+        "durationMonths": { "type": "number" },
+        "startDate": { "type": "string", "maxLength": 40 },
+        "renewalDate": { "type": "string", "maxLength": 40 },
+        "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED", "CANCELLED", "EXPIRED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id", "hostingId", "orderId", "orderNumber", "customerId", "customerName",
+        "customerEmail", "planId", "planName", "domain", "githubRepository",
+        "storageGb", "websiteLimit", "durationMonths", "startDate", "renewalDate",
+        "status", "createdAt", "updatedAt"
+      ]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global HostNova brand and contact configuration.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "companyName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "tagline": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "companyEmail": { "type": "string", "format": "email", "maxLength": 200 },
+        "companyPhone": { "type": "string", "maxLength": 40 },
+        "companyAddress": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "logoUrl": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "currency": { "type": "string", "enum": ["USD"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "companyName", "tagline", "companyEmail", "companyPhone", "companyAddress", "logoUrl", "currency", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Administrator registry for RBAC lookups."
+    },
+    "/profiles/{userId}": {
+      "schema": { "$ref": "#/entities/Profile" },
+      "description": "Private customer and admin profile records."
+    },
+    "/hosting_plans/{planId}": {
+      "schema": { "$ref": "#/entities/HostingPlan" },
+      "description": "Publicly readable hosting plan catalog managed by admins."
+    },
+    "/subscription_discounts/{discountId}": {
+      "schema": { "$ref": "#/entities/SubscriptionDiscount" },
+      "description": "Publicly readable subscription duration discount rules managed by admins."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer hosting orders with immutable price snapshots."
+    },
+    "/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "Simulated payment transaction records (zero card/CVV storage)."
+    },
+    "/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Immutable invoice records linked 1:1 with orders."
+    },
+    "/hosting_services/{hostingDocId}": {
+      "schema": { "$ref": "#/entities/HostingService" },
+      "description": "Simulated hosting service activation and lifecycle records."
+    },
+    "/site_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SiteSettings" },
+      "description": "Global site branding and demonstrative contact settings."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "HostNova — International Web Hosting Platform",
+  "description": "Powering Your Digital World. International SSD web hosting platform with transparent USD pricing, instant activation, automated PDF billing, and full management controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

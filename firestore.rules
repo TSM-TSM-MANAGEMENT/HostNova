@@ -1,0 +1,455 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1 / Global Safety Net: Default deny everything
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Global Hardened Primitives
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrapAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'packbaribd@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrapAdmin() ||
+        (isVerifiedUser() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isNonEmptyString(val, maxLen) {
+      return val is string && val.size() >= 1 && val.size() <= maxLen;
+    }
+
+    function isOptionalString(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    // =========================================================================
+    // Entity Validation Blueprints (Anti-Update-Gap)
+    // =========================================================================
+    function isValidProfile(data) {
+      return data.keys().hasAll(['id', 'fullName', 'email', 'role', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'fullName', 'email', 'role', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && isNonEmptyString(data.fullName, 120)
+        && isNonEmptyString(data.email, 200)
+        && data.role in ['customer', 'admin']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidHostingPlan(data) {
+      return data.keys().hasAll([
+          'id', 'name', 'tagline', 'monthlyPrice', 'storageGb', 'websiteLimit',
+          'features', 'isPopular', 'isActive', 'sortOrder', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'name', 'tagline', 'monthlyPrice', 'storageGb', 'websiteLimit',
+          'features', 'isPopular', 'isActive', 'sortOrder', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && isNonEmptyString(data.name, 60)
+        && isNonEmptyString(data.tagline, 160)
+        && data.monthlyPrice is number && data.monthlyPrice > 0 && data.monthlyPrice <= 10000
+        && data.storageGb is number && data.storageGb >= 1 && data.storageGb <= 100000
+        && data.websiteLimit is number && data.websiteLimit >= 1 && data.websiteLimit <= 10000
+        && data.features is list && data.features.size() >= 1 && data.features.size() <= 15
+        && data.features[0] is string && data.features[0].size() <= 120
+        && data.isPopular is bool
+        && data.isActive is bool
+        && data.sortOrder is number && data.sortOrder >= 0 && data.sortOrder <= 1000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDiscount(data) {
+      return data.keys().hasAll(['id', 'durationMonths', 'label', 'discountPercentage', 'isActive', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'durationMonths', 'label', 'discountPercentage', 'isActive', 'updatedAt'])
+        && isValidId(data.id)
+        && data.durationMonths is number && data.durationMonths >= 1 && data.durationMonths <= 60
+        && isNonEmptyString(data.label, 40)
+        && data.discountPercentage is number && data.discountPercentage >= 0 && data.discountPercentage <= 80
+        && data.isActive is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll([
+          'id', 'orderNumber', 'customerId', 'customerName', 'customerEmail',
+          'planId', 'planNameSnapshot', 'baseMonthlyPriceSnapshot', 'storageSnapshot',
+          'websiteLimitSnapshot', 'durationMonths', 'discountPercentage',
+          'discountedMonthlyPrice', 'originalTotal', 'discountAmount', 'finalTotal',
+          'domain', 'githubRepository', 'paymentMethod', 'paymentId', 'transactionId',
+          'invoiceId', 'invoiceNumber', 'hostingDocId', 'hostingId',
+          'orderStatus', 'paymentStatus', 'hostingStatus', 'isSimulated', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'orderNumber', 'customerId', 'customerName', 'customerEmail',
+          'planId', 'planNameSnapshot', 'baseMonthlyPriceSnapshot', 'storageSnapshot',
+          'websiteLimitSnapshot', 'durationMonths', 'discountPercentage',
+          'discountedMonthlyPrice', 'originalTotal', 'discountAmount', 'finalTotal',
+          'domain', 'githubRepository', 'paymentMethod', 'paymentId', 'transactionId',
+          'invoiceId', 'invoiceNumber', 'hostingDocId', 'hostingId',
+          'orderStatus', 'paymentStatus', 'hostingStatus', 'isSimulated', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && isNonEmptyString(data.orderNumber, 40)
+        && isValidId(data.customerId)
+        && isNonEmptyString(data.customerName, 120)
+        && isNonEmptyString(data.customerEmail, 200)
+        && isValidId(data.planId)
+        && isNonEmptyString(data.planNameSnapshot, 60)
+        && data.baseMonthlyPriceSnapshot is number && data.baseMonthlyPriceSnapshot > 0 && data.baseMonthlyPriceSnapshot <= 10000
+        && data.storageSnapshot is number && data.storageSnapshot >= 1 && data.storageSnapshot <= 100000
+        && data.websiteLimitSnapshot is number && data.websiteLimitSnapshot >= 1 && data.websiteLimitSnapshot <= 10000
+        && data.durationMonths is number && data.durationMonths >= 1 && data.durationMonths <= 60
+        && data.discountPercentage is number && data.discountPercentage >= 0 && data.discountPercentage <= 80
+        && data.discountedMonthlyPrice is number && data.discountedMonthlyPrice > 0 && data.discountedMonthlyPrice <= 10000
+        && data.originalTotal is number && data.originalTotal > 0 && data.originalTotal <= 500000
+        && data.discountAmount is number && data.discountAmount >= 0 && data.discountAmount <= 500000
+        && data.finalTotal is number && data.finalTotal > 0 && data.finalTotal <= 500000
+        && isOptionalString(data.domain, 253)
+        && isOptionalString(data.githubRepository, 300)
+        && isNonEmptyString(data.paymentMethod, 60)
+        && isValidId(data.paymentId)
+        && isNonEmptyString(data.transactionId, 60)
+        && isValidId(data.invoiceId)
+        && isNonEmptyString(data.invoiceNumber, 40)
+        && isValidId(data.hostingDocId)
+        && isNonEmptyString(data.hostingId, 40)
+        && data.orderStatus in ['PENDING', 'CONFIRMED', 'CANCELLED']
+        && data.paymentStatus in ['SUCCESS', 'PENDING', 'FAILED']
+        && data.hostingStatus in ['ACTIVE', 'SUSPENDED', 'CANCELLED', 'EXPIRED']
+        && data.isSimulated == true
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPayment(data) {
+      return data.keys().hasAll([
+          'id', 'transactionId', 'orderId', 'orderNumber', 'customerId',
+          'customerName', 'customerEmail', 'paymentMethod', 'amount',
+          'currency', 'paymentStatus', 'isSimulated', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'transactionId', 'orderId', 'orderNumber', 'customerId',
+          'customerName', 'customerEmail', 'paymentMethod', 'amount',
+          'currency', 'paymentStatus', 'isSimulated', 'createdAt'
+        ])
+        && isValidId(data.id)
+        && isNonEmptyString(data.transactionId, 60)
+        && isValidId(data.orderId)
+        && isNonEmptyString(data.orderNumber, 40)
+        && isValidId(data.customerId)
+        && isNonEmptyString(data.customerName, 120)
+        && isNonEmptyString(data.customerEmail, 200)
+        && isNonEmptyString(data.paymentMethod, 60)
+        && data.amount is number && data.amount > 0 && data.amount <= 500000
+        && data.currency == 'USD'
+        && data.paymentStatus in ['SUCCESS', 'PENDING', 'FAILED']
+        && data.isSimulated == true
+        && data.createdAt is timestamp;
+    }
+
+    function isValidInvoice(data) {
+      return data.keys().hasAll([
+          'id', 'invoiceNumber', 'orderId', 'orderNumber', 'customerId',
+          'customerName', 'customerEmail', 'domain', 'planNameSnapshot',
+          'storageSnapshot', 'websiteLimitSnapshot', 'durationMonths',
+          'baseMonthlyPriceSnapshot', 'discountedMonthlyPrice', 'originalTotal',
+          'discountPercentage', 'discountAmount', 'finalTotal', 'paymentMethod',
+          'transactionId', 'amount', 'currency', 'paymentStatus', 'invoiceDate'
+        ])
+        && data.keys().hasOnly([
+          'id', 'invoiceNumber', 'orderId', 'orderNumber', 'customerId',
+          'customerName', 'customerEmail', 'domain', 'planNameSnapshot',
+          'storageSnapshot', 'websiteLimitSnapshot', 'durationMonths',
+          'baseMonthlyPriceSnapshot', 'discountedMonthlyPrice', 'originalTotal',
+          'discountPercentage', 'discountAmount', 'finalTotal', 'paymentMethod',
+          'transactionId', 'amount', 'currency', 'paymentStatus', 'invoiceDate'
+        ])
+        && isValidId(data.id)
+        && isNonEmptyString(data.invoiceNumber, 40)
+        && isValidId(data.orderId)
+        && isNonEmptyString(data.orderNumber, 40)
+        && isValidId(data.customerId)
+        && isNonEmptyString(data.customerName, 120)
+        && isNonEmptyString(data.customerEmail, 200)
+        && isOptionalString(data.domain, 253)
+        && isNonEmptyString(data.planNameSnapshot, 60)
+        && data.storageSnapshot is number && data.storageSnapshot >= 1 && data.storageSnapshot <= 100000
+        && data.websiteLimitSnapshot is number && data.websiteLimitSnapshot >= 1 && data.websiteLimitSnapshot <= 10000
+        && data.durationMonths is number && data.durationMonths >= 1 && data.durationMonths <= 60
+        && data.baseMonthlyPriceSnapshot is number && data.baseMonthlyPriceSnapshot > 0 && data.baseMonthlyPriceSnapshot <= 10000
+        && data.discountedMonthlyPrice is number && data.discountedMonthlyPrice > 0 && data.discountedMonthlyPrice <= 10000
+        && data.originalTotal is number && data.originalTotal > 0 && data.originalTotal <= 500000
+        && data.discountPercentage is number && data.discountPercentage >= 0 && data.discountPercentage <= 80
+        && data.discountAmount is number && data.discountAmount >= 0 && data.discountAmount <= 500000
+        && data.finalTotal is number && data.finalTotal > 0 && data.finalTotal <= 500000
+        && isNonEmptyString(data.paymentMethod, 60)
+        && isNonEmptyString(data.transactionId, 60)
+        && data.amount is number && data.amount > 0 && data.amount <= 500000
+        && data.currency == 'USD'
+        && data.paymentStatus in ['PAID', 'DEMO PAID', 'PENDING', 'FAILED']
+        && data.invoiceDate is timestamp;
+    }
+
+    function isValidHostingService(data) {
+      return data.keys().hasAll([
+          'id', 'hostingId', 'orderId', 'orderNumber', 'customerId', 'customerName',
+          'customerEmail', 'planId', 'planName', 'domain', 'githubRepository',
+          'storageGb', 'websiteLimit', 'durationMonths', 'startDate', 'renewalDate',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'hostingId', 'orderId', 'orderNumber', 'customerId', 'customerName',
+          'customerEmail', 'planId', 'planName', 'domain', 'githubRepository',
+          'storageGb', 'websiteLimit', 'durationMonths', 'startDate', 'renewalDate',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && isNonEmptyString(data.hostingId, 40)
+        && isValidId(data.orderId)
+        && isNonEmptyString(data.orderNumber, 40)
+        && isValidId(data.customerId)
+        && isNonEmptyString(data.customerName, 120)
+        && isNonEmptyString(data.customerEmail, 200)
+        && isValidId(data.planId)
+        && isNonEmptyString(data.planName, 60)
+        && isOptionalString(data.domain, 253)
+        && isOptionalString(data.githubRepository, 300)
+        && data.storageGb is number && data.storageGb >= 1 && data.storageGb <= 100000
+        && data.websiteLimit is number && data.websiteLimit >= 1 && data.websiteLimit <= 10000
+        && data.durationMonths is number && data.durationMonths >= 1 && data.durationMonths <= 60
+        && isNonEmptyString(data.startDate, 40)
+        && isNonEmptyString(data.renewalDate, 40)
+        && data.status in ['ACTIVE', 'SUSPENDED', 'CANCELLED', 'EXPIRED']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSiteSettings(data) {
+      return data.keys().hasAll([
+          'id', 'companyName', 'tagline', 'companyEmail', 'companyPhone',
+          'companyAddress', 'logoUrl', 'currency', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'companyName', 'tagline', 'companyEmail', 'companyPhone',
+          'companyAddress', 'logoUrl', 'currency', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && isNonEmptyString(data.companyName, 80)
+        && isNonEmptyString(data.tagline, 160)
+        && isNonEmptyString(data.companyEmail, 200)
+        && isOptionalString(data.companyPhone, 40)
+        && isNonEmptyString(data.companyAddress, 240)
+        && isNonEmptyString(data.logoUrl, 300)
+        && data.currency == 'USD'
+        && data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Collection Rules
+    // =========================================================================
+
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && isVerifiedUser() && (request.auth.uid == adminId || isAdmin());
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    match /profiles/{userId} {
+      allow get: if isValidId(userId) && isVerifiedUser() && (request.auth.uid == userId || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.id == request.auth.uid || isBootstrapAdmin());
+      allow create: if isValidId(userId)
+        && isVerifiedUser()
+        && isValidProfile(incoming())
+        && request.auth.uid == userId
+        && incoming().id == request.auth.uid
+        && incoming().role == 'customer'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isVerifiedUser()
+        && isValidProfile(incoming())
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'email', 'updatedAt'])) ||
+          (request.auth.uid == userId && incoming().role == existing().role && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'email', 'updatedAt']))
+        );
+      allow delete: if false;
+    }
+
+    match /hosting_plans/{planId} {
+      allow get: if isValidId(planId);
+      allow list: if true;
+      allow create: if isValidId(planId)
+        && isAdmin()
+        && isValidHostingPlan(incoming())
+        && incoming().id == planId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(planId)
+        && isAdmin()
+        && isValidHostingPlan(incoming())
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'tagline', 'monthlyPrice', 'storageGb', 'websiteLimit',
+          'features', 'isPopular', 'isActive', 'sortOrder', 'updatedAt'
+        ]);
+      allow delete: if isValidId(planId) && isAdmin();
+    }
+
+    match /subscription_discounts/{discountId} {
+      allow get: if isValidId(discountId);
+      allow list: if true;
+      allow create: if isValidId(discountId)
+        && isAdmin()
+        && isValidDiscount(incoming())
+        && incoming().id == discountId
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(discountId)
+        && isAdmin()
+        && isValidDiscount(incoming())
+        && incoming().id == existing().id
+        && incoming().durationMonths == existing().durationMonths
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['label', 'discountPercentage', 'isActive', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /site_settings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow list: if true;
+      allow create: if isValidId(settingId)
+        && isAdmin()
+        && isValidSiteSettings(incoming())
+        && incoming().id == settingId
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(settingId)
+        && isAdmin()
+        && isValidSiteSettings(incoming())
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'companyName', 'tagline', 'companyEmail', 'companyPhone',
+          'companyAddress', 'logoUrl', 'currency', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    match /orders/{orderId} {
+      allow get: if isValidId(orderId) && isVerifiedUser() && (existing().customerId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.customerId == request.auth.uid || isBootstrapAdmin());
+      allow create: if isValidId(orderId)
+        && isVerifiedUser()
+        && isValidOrder(incoming())
+        && incoming().id == orderId
+        && incoming().customerId == request.auth.uid
+        && incoming().orderStatus == 'CONFIRMED'
+        && incoming().paymentStatus == 'SUCCESS'
+        && incoming().hostingStatus == 'ACTIVE'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().planId in ['basic', 'pro', 'enterprise'] || exists(/databases/$(database)/documents/hosting_plans/$(incoming().planId)))
+        && existsAfter(/databases/$(database)/documents/payments/$(incoming().paymentId))
+        && existsAfter(/databases/$(database)/documents/invoices/$(incoming().invoiceId))
+        && existsAfter(/databases/$(database)/documents/hosting_services/$(incoming().hostingDocId));
+      allow update: if isValidId(orderId)
+        && isAdmin()
+        && isValidOrder(incoming())
+        && incoming().id == existing().id
+        && incoming().customerId == existing().customerId
+        && incoming().orderNumber == existing().orderNumber
+        && incoming().planId == existing().planId
+        && incoming().planNameSnapshot == existing().planNameSnapshot
+        && incoming().baseMonthlyPriceSnapshot == existing().baseMonthlyPriceSnapshot
+        && incoming().originalTotal == existing().originalTotal
+        && incoming().discountAmount == existing().discountAmount
+        && incoming().finalTotal == existing().finalTotal
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['orderStatus', 'hostingStatus', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow get: if isValidId(paymentId) && isVerifiedUser() && (existing().customerId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.customerId == request.auth.uid || isBootstrapAdmin());
+      allow create: if isValidId(paymentId)
+        && isVerifiedUser()
+        && isValidPayment(incoming())
+        && incoming().id == paymentId
+        && incoming().customerId == request.auth.uid
+        && incoming().paymentStatus == 'SUCCESS'
+        && incoming().createdAt == request.time
+        && existsAfter(/databases/$(database)/documents/orders/$(incoming().orderId));
+      allow update, delete: if false;
+    }
+
+    match /invoices/{invoiceId} {
+      allow get: if isValidId(invoiceId) && isVerifiedUser() && (existing().customerId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.customerId == request.auth.uid || isBootstrapAdmin());
+      allow create: if isValidId(invoiceId)
+        && isVerifiedUser()
+        && isValidInvoice(incoming())
+        && incoming().id == invoiceId
+        && incoming().customerId == request.auth.uid
+        && incoming().paymentStatus == 'PAID'
+        && incoming().invoiceDate == request.time
+        && existsAfter(/databases/$(database)/documents/orders/$(incoming().orderId));
+      allow update, delete: if false;
+    }
+
+    match /hosting_services/{hostingDocId} {
+      allow get: if isValidId(hostingDocId) && isVerifiedUser() && (existing().customerId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.customerId == request.auth.uid || isBootstrapAdmin());
+      allow create: if isValidId(hostingDocId)
+        && isVerifiedUser()
+        && isValidHostingService(incoming())
+        && incoming().id == hostingDocId
+        && incoming().customerId == request.auth.uid
+        && incoming().status == 'ACTIVE'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && existsAfter(/databases/$(database)/documents/orders/$(incoming().orderId));
+      allow update: if isValidId(hostingDocId)
+        && isAdmin()
+        && isValidHostingService(incoming())
+        && incoming().id == existing().id
+        && incoming().orderId == existing().orderId
+        && incoming().customerId == existing().customerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if false;
+    }
+  }
+}
